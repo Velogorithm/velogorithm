@@ -29,6 +29,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
 
+<!-- Cloudflare Turnstile (bot protection for the contact form) -->
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
 <script type="application/ld+json">
 {
   "@context":"https://schema.org","@type":"Organization","name":"Velorithm Systems",
@@ -561,6 +564,10 @@
           </select>
         </div>
         <div class="field"><label for="message">Message</label><textarea id="message" name="message" placeholder="Tell us about your project…" required></textarea></div>
+        <!-- Cloudflare Turnstile widget — replace data-sitekey with the site key from your Turnstile dashboard -->
+        <div class="field" style="display:flex;justify-content:center;">
+          <div class="cf-turnstile" data-sitekey="REPLACE_WITH_YOUR_TURNSTILE_SITE_KEY" data-theme="dark" data-action="contact"></div>
+        </div>
         <button type="submit" class="btn btn-primary" id="submitBtn">Start a Project
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </button>
@@ -654,12 +661,15 @@
       if(res.ok){
         showMsg('ok', 'Thanks — your message has been sent. We’ll be in touch within one business day.');
         form.reset();
+        if (window.turnstile) try { window.turnstile.reset(); } catch(_){}
       } else {
         const data = await res.json().catch(() => ({}));
         showMsg('err', data.error || 'Something went wrong sending your message. Please email hello@velorithmsystems.com directly.');
+        if (window.turnstile) try { window.turnstile.reset(); } catch(_){}
       }
     } catch (err) {
       showMsg('err', 'Network error — please check your connection or email hello@velorithmsystems.com directly.');
+      if (window.turnstile) try { window.turnstile.reset(); } catch(_){}
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = original.trim();

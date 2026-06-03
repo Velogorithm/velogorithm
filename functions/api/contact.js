@@ -73,6 +73,36 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Message is too long." }, 422);
   }
 
+  // ---- Cloudflare Turnstile verification (skipped if TURNSTILE_SECRET not set) ----
+  if (env.TURNSTILE_SECRET) {
+    const token = (data["cf-turnstile-response"] || "").toString().trim();
+    if (!token) {
+      return json({ error: "Please complete the verification challenge." }, 422);
+    }
+    try {
+      const tsResp = await fetch(
+        "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            secret: env.TURNSTILE_SECRET,
+            response: token,
+            remoteip: request.headers.get("CF-Connecting-IP") || "",
+          }),
+        }
+      );
+      const tsData = await tsResp.json().catch(() => ({}));
+      if (!tsData.success) {
+        console.error("Turnstile failed:", tsData["error-codes"]);
+        return json({ error: "Verification failed — please try again." }, 422);
+      }
+    } catch (err) {
+      console.error("Turnstile verification error:", err);
+      return json({ error: "Verification service unavailable — please try again shortly." }, 503);
+    }
+  }
+
   // ---- Config check ----
   if (!env.RESEND_API_KEY || !env.CONTACT_TO || !env.CONTACT_FROM) {
     return json(
